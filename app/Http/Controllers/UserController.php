@@ -55,6 +55,7 @@ class UserController extends Controller {
      * @return \Illuminate\Http\Response
      */
     public function login(Request $request) {
+
         $creds = $request->validate([
             'email' => 'required|email',
             'password' => 'required',
@@ -71,9 +72,20 @@ class UserController extends Controller {
 
         $roles = $user->roles->pluck('slug')->all();
 
-        $plainTextToken = $user->createToken('hydra-api-token', $roles)->plainTextToken;
+        $token =  $user->createToken('hydra-api-token', $roles, [
+            'expires_at' => now()->addHours(24), // Set expiration to 24 hours from now
+        ]);
+        $plainTextToken = $token->plainTextToken;
 
-        return response(['error' => 0, 'id' => $user->id, 'token' => $plainTextToken], 200);
+        return response([
+            'error' => 0,
+            'roles' =>$roles,
+            'id' => $user->id,
+            'user' => ['id' => $user->id,'accessToken' => $plainTextToken,'name' =>  $user->name, 'email' => $user->email],
+            'accessToken' => $plainTextToken,
+            'expired_at' => config('sanctum.expiration') ? now()->addMinutes(config('sanctum.expiration')) : null ,
+        ],
+            200);
     }
 
     /**
